@@ -1,0 +1,117 @@
+#!/usr/bin/env ruby
+
+if ARGV[0] == 'fake'
+  require_relative '../fakegpio'; GPIO=FakeGPIO
+else
+  require_relative '../gpio'
+end
+
+require 'minitest/spec'
+require 'minitest/autorun'
+
+TEST_PIN = ENV['GPIO_TEST_PIN'] || 23
+TEST_PIN2 = ENV['GPIO_TEST_PIN2'] || 24
+
+describe GPIO do
+  TIMES = 10
+  TIMEOUT = 0.1
+  before do
+    @gpio = GPIO.new TEST_PIN
+    @gpio2 = GPIO.new TEST_PIN2
+    @gpio.export
+    @gpio2.export
+  end
+  after do
+    @gpio.unexport
+    @gpio2.unexport
+  end
+  it "is exported" do
+    @gpio.must_be :exported?
+  end
+  it "can set direction in" do
+    @gpio.set_input
+    @gpio.must_be :input?
+    @gpio.wont_be :output?
+  end
+  it "can set direction out and low" do
+    @gpio.set_output_low
+    @gpio.must_be :output?
+    @gpio.must_be :low?
+  end
+  it "can set direction out and high" do
+    @gpio.set_output_high
+    @gpio.must_be :output?
+    @gpio.must_be :high?
+  end
+  it "can set value" do
+    @gpio.set_output_low
+    TIMES.times do
+      @gpio.set_high
+      @gpio.must_be :high?
+      @gpio.set_low
+      @gpio.must_be :low?
+    end
+  end
+  def square_wave(gpio)
+    gpio.set_output_low
+    gpio.must_be :low?
+    queue = Queue.new
+    thread = Thread.new do
+      loop do
+        break if queue.pop == :exit
+        gpio.high? ? gpio.set_low : gpio.set_high
+      end
+    end
+    [queue, thread]
+  end
+  def edge_test(gpio)
+    queue, thread = square_wave gpio
+    TIMES.times do |t|
+      queue.push :trigger
+      yield gpio.select(timeout:TIMEOUT)
+    end
+    queue.push :exit; thread.join
+  end
+  it "can trigger on none" do
+    @gpio.set_edge_none
+    @gpio.must_be :edge_none?
+    edge_test(@gpio) {|g| g.must_be_nil}
+  end
+  it "can trigger on rising" do
+    @gpio.set_edge_rising
+    @gpio.must_be :edge_rising?
+    edge_test(@gpio) {|g| @gpio.high? ? g.must_equal(@gpio) : g.must_be_nil}
+  end
+  it "can trigger on falling" do
+    @gpio.set_edge_falling
+    @gpio.must_be :edge_falling?
+    edge_test(@gpio) {|g| @gpio.high? ? g.must_be_nil : g.must_equal(@gpio)}
+  end
+  it "can trigger on both" do
+    @gpio.set_edge_both
+    @gpio.must_be :edge_both?
+    edge_test(@gpio) {|g| @gpio.high?; g.must_equal(@gpio)}
+  end
+  it "can trigger on multiple" do
+    @gpio.set_edge_both
+    @gpio2.set_edge_both
+    queue, thread = square_wave @gpio
+    queue2, thread2 = square_wave @gpio2
+    prev, prev2 = [@gpio.high?, @gpio2.high?]
+    queue.push :trigger
+    TIMES.times do
+      gpios = GPIO.select([@gpio, @gpio2], timeout:TIMEOUT)
+      gpios.wont_be_nil; gpios.size.must_equal 1
+      if gpios[0] == @gpio
+        @gpio.high?.must_equal !prev
+        prev = @gpio.high?
+        queue2.push :trigger
+      else
+        @gpio2.high?.must_equal !prev2
+        prev2 = @gpio2.high?
+        queue.push :trigger
+      end
+    end
+    queue.push :exit; queue2.push :exit; thread.join; thread2.join
+  end
+end
