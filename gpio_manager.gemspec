@@ -7,11 +7,11 @@ require "gpio_manager/version"
 Gem::Specification.new do |s|
   s.name        = "gpio_manager"
   s.version     = GpioManager::VERSION
-  s.authors     = ["TODO: Your name"]
-  s.email       = ["TODO: Your email"]
-  s.homepage    = "TODO"
-  s.summary     = "TODO: Summary of GpioManager."
-  s.description = "TODO: Description of GpioManager."
+  s.authors     = ["Alexander Negoda"]
+  s.email       = ["alexander.negoda@gmail.com"]
+  s.homepage    = "http://hoobot.ru"
+  s.summary     = "GPIO manager for hOObot House"
+  s.description = "GPIO manager for hOObot House"
   s.license     = "MIT"
 
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.rdoc"]
