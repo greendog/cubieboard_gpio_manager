@@ -2,6 +2,7 @@
 
 ## Install
 Add folowing string to you Gemfile:
+
 ```gem 'gpio_manager', :git => 'git://github.com/greendog/cubieboard_gpio_manager.git'```
 
 ## Using
