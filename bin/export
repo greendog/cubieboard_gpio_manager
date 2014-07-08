@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 require 'optparse'
 require 'etc'
-require_relative 'gpio'
+require_relative '../lib/gpio_manager/gpio'
 
 banner = "Usage: #{$0} [options] gpio ..."
 user = nil
